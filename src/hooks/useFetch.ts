@@ -75,4 +75,3 @@ export const useFetch = <T>(initialUrl: string): ReturnValue<T> => {
   return [response, setUrl];
 };
 
-export default useFetch;
