@@ -1,4 +1,4 @@
-import React, {ChangeEvent, useMemo, useState} from 'react';
+import React, {ChangeEvent, useState} from 'react';
 import './App.css';
 
 import {useFetch, LoaderStatus} from './hooks/useFetch';
@@ -55,21 +55,22 @@ const App = (): JSX.Element => {
     // Locate user's position
     const [coordinates, geolocationError] = usePosition();
     // Selection for cloud provider
-    const [selection, setSelection] = useState();
+    const [selection, setSelection] = useState({value:'',text:''});
 
-    const filterByProvider = useMemo(() => {
+    const filterByProvider = () => {
         if (response.status === LoaderStatus.Success) {
             const reducer = (acc: Cloud[], el: Cloud) => {
                 if (el.cloud_name.includes(selection.value)) {
                     acc.push(el);
-                }
-                ;
+                };
                 return acc;
             };
 
             return response.data.clouds.reduce(reducer, []);
         }
-    }, [selection]);
+    };
+
+    const filtered = filterByProvider() || [];
 
     const changeProvider = (e: ChangeEvent<HTMLSelectElement>) => {
         const providers = cloudProviderOptions.filter(cloud => cloud.value === e.target.value);
@@ -78,10 +79,10 @@ const App = (): JSX.Element => {
 
 
     const sortByLocation = () => {
-        if (coordinates && filterByProvider) {
+        if (coordinates && filtered.length > 0) {
             const {latitude, longitude} = coordinates;
 
-            let temporary = haversine(latitude, filterByProvider[0].geo_latitude, longitude, filterByProvider[0].geo_latitude);
+            let temporary = haversine(latitude, filtered[0].geo_latitude, longitude, filtered[0].geo_latitude);
 
             const reducer = (acc: Cloud[], el: Cloud) => {
                 let current = haversine(latitude, el.geo_latitude, longitude, el.geo_longitude);
@@ -91,10 +92,9 @@ const App = (): JSX.Element => {
                 }
 
                 return acc;
-
             };
 
-            return filterByProvider.reduce(reducer, []);
+            return filtered.reduce(reducer, []);
         };
     };
 
@@ -104,7 +104,7 @@ const App = (): JSX.Element => {
     return response.status === LoaderStatus.Success ?
         (<form>
                 <h2>Find closest provider</h2>
-                <label htmlFor="clouds">Choose a cloud:</label>
+                <label htmlFor="clouds">Filter by provider:</label>
                 <select id="clouds" name="clouds" onChange={changeProvider}>
                     <option value="none" selected disabled hidden/>
                     {cloudProviderOptions.map((cloudProvider) =>
@@ -113,13 +113,16 @@ const App = (): JSX.Element => {
                 </select>
                 {geolocationError && geolocationError.message !== null ?
                     (<div>
-                        <p>{`Not able to find closest cloud to you, received an error: ${geolocationError!.message}`}</p>
+                        <p>{`Not able to find nearest data center to you, received an error: ${geolocationError!.message}`}</p>
                         <p>{"Select a cloud provider to see list of data centers"}</p>
                         <ul>
-                            {filterByProvider?.map(cloudProvider => (<li>{cloudProvider.cloud_description}</li>))}
+                            {filtered.map(cloudProvider => (<li>{cloudProvider.cloud_description}</li>))}
                         </ul>
-                    </div>) : (<div>{closestProviders.reverse().map((provider) => (
-                            <li>{provider.cloud_description}</li>))}</div>)
+                    </div>) : (<div>
+                        <p>{'List of nearest data centers'}</p>
+                        {closestProviders.reverse().map((provider) => (
+                            <li>{provider.cloud_description}</li>))}
+                    </div>)
                 }
             </form>
         ) : (<div>Loading...</div>)
