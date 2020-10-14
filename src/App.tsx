@@ -3,6 +3,7 @@ import './App.css';
 
 import {useFetch, LoaderStatus} from './hooks/useFetch';
 import {usePosition} from './hooks/useGeoPosition';
+import {haversine} from "./havershine";
 
 type Cloud = {
     cloud_description: string;
@@ -52,7 +53,7 @@ const App = (): JSX.Element => {
     // Get data from API using generic hook
     const [response] = useFetch<ResponseData>('https://api.aiven.io/v1/clouds');
     // Locate user's position
-    const [coordinates, geolocationError] = usePosition<>();
+    const [coordinates, geolocationError] = usePosition();
     // Selection for cloud provider
     const [selection, setSelection] = useState();
 
@@ -75,25 +76,9 @@ const App = (): JSX.Element => {
         setSelection(providers[0]);
     };
 
-    // Converts numeric degrees to radians
-    const toRadians = (value: number) => value * Math.PI / 180;
 
-    // This formula does not take an account that Earth is ellipsoid
-    // http://rosettacode.org/wiki/Haversine_formula
-    const haversine = (lat1: number, lat2: number, lng1: number, lng2: number) => {
-        const radius = 6372.8; // Average radius of Earth
-        const deltaLat = toRadians(lat2 - lat1);
-        const deltaLng = toRadians(lng2 - lng1);
-        lat1 = toRadians(lat1);
-        lat2 = toRadians(lat2);
-        const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) + Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2) * Math.cos(lat1) * Math.cos(lat2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return radius * c;
-    }
-
-
-    const closestProvider = () => {
-        if(coordinates && filterByProvider){
+    const sortByLocation = () => {
+        if (coordinates && filterByProvider) {
             const {latitude, longitude} = coordinates;
 
             let temporary = haversine(latitude, filterByProvider[0].geo_latitude, longitude, filterByProvider[0].geo_latitude);
@@ -104,11 +89,16 @@ const App = (): JSX.Element => {
                     temporary = current;
                     acc.push(el)
                 }
+
                 return acc;
+
             };
+
             return filterByProvider.reduce(reducer, []);
-        }
+        };
     };
+
+    const closestProviders = sortByLocation() || [];
 
 
     return response.status === LoaderStatus.Success ?
@@ -128,9 +118,8 @@ const App = (): JSX.Element => {
                         <ul>
                             {filterByProvider?.map(cloudProvider => (<li>{cloudProvider.cloud_description}</li>))}
                         </ul>
-                    </div>) : (<div>
-                        {}
-                    </div>)
+                    </div>) : (<div>{closestProviders.reverse().map((provider) => (
+                            <li>{provider.cloud_description}</li>))}</div>)
                 }
             </form>
         ) : (<div>Loading...</div>)

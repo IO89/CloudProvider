@@ -3,15 +3,15 @@ import { useState, useEffect } from "react";
 export type Coordinates = {
     latitude: number;
     longitude: number;
-} | {};
+};
 
 type CoordinatesError = {
   message: string;
-} | null
+};
 
-export const usePosition = (): [Coordinates,CoordinatesError]=> {
-  const [coordinates, setCoordinates] = useState<Coordinates>({});
-  const [geolocationError, setGeolocationError] = useState<CoordinatesError>(null);
+export const usePosition = (): [Coordinates |undefined,CoordinatesError| undefined]=> {
+  const [coordinates, setCoordinates] = useState<Coordinates>();
+  const [geolocationError, setGeolocationError] = useState<CoordinatesError>();
 
   useEffect(() => {
     if (!navigator?.geolocation) {
